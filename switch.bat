@@ -36,14 +36,14 @@ if not %ethernet%==0 (
     echo 将在30秒后自动退出
     timeout /t 30
     exit /b
-) else  if not %wlan%==0 (
+) else if not %wlan%==0 (
     echo 请在弹出的窗口此查看WLAN的网络适配器名称，之后在脚本内修改WLAN_NAME
     control ncpa.cpl
     echo 将在30秒后自动退出
     timeout /t 30
     exit /b
 ) else (
-    echo 网络适配器已检测
+    echo 已检测到网络适配器 %ETHERNET_NAME% 与 %WLAN_NAME%
 )
 
 REM 检测WLAN状态
@@ -61,13 +61,31 @@ for /f "tokens=*" %%i in ('netsh interface show interface name^="%ETHERNET_NAME%
 echo WLAN_STATUS . . . . . . . . %WLAN_STATUS%
 echo ETHERNET_STATUS . . . . . . %ETHERNET_STATUS%
 
+if "%WLAN_STATUS%"=="Disconnected" (
+    echo 检测到现在在内网
+) else (
+    echo 检测到现在在外网
+)
+set /p userChoice=请输入你的选择(1.切换至外网 2.切换至内网 直接回车则自动切换): 
+
+if "%userChoice%"=="1" (
+    set WLAN_STATUS=Disconnected
+    goto end
+) else if "%userChoice%"=="2" (
+    set WLAN_STATUS=Connected
+    goto end
+) else (
+    goto end
+)
+:end
+
 REM 如果WLAN未连接且以太网断开
 if "%WLAN_STATUS%"=="Disconnected" (
- if "%ETHERNET_STATUS%"=="Disconnected" (
-    echo 将切换至外网？
-    pause
+  if "%ETHERNET_STATUS%"=="Disconnected" (
+    echo 要切换至外网吗？
+    pause >nul
     echo 关闭iNode...
-    taskkill /f /im iNode client.exe
+    taskkill /f /im "iNode client.exe"
     taskkill /f /im iNodeCmn.exe
     taskkill /f /im iNodeMon.exe
     taskkill /f /im iNodePortal.exe
@@ -84,14 +102,15 @@ if "%WLAN_STATUS%"=="Disconnected" (
     exit /b
   )
   if "%ETHERNET_STATUS%"=="Connected" (
-    echo 内网缆线未断开，要将断开有线网络网卡后尝试切换外网吗？
-    pause
+    echo 内网缆线未断开，要断开有线网络适配器后尝试切换外网吗？
+    pause >nul
     echo 关闭iNode...
     taskkill /f /im "iNode Client.exe"
     taskkill /f /im iNodeCmn.exe
     taskkill /f /im iNodeMon.exe
     taskkill /f /im iNodePortal.exe
     taskkill /f /im iNodeSec.exe
+
     echo 正在关闭以太网...
     netsh interface set interface name="%ETHERNET_NAME%" admin=disabled
 
@@ -114,8 +133,8 @@ if "%WLAN_STATUS%"=="Disconnected" (
 
 REM 如果WLAN已连接
 if "%WLAN_STATUS%"=="Connected" (
-    echo 将切换至内网？
-    pause
+    echo 要切换至内网吗？
+    pause >nul
     echo 关闭WLAN...
     netsh interface set interface name="%WLAN_NAME%" admin=disabled
     timeout /t 1
@@ -127,7 +146,8 @@ if "%WLAN_STATUS%"=="Connected" (
     
     echo 启动iNode客户端
     start "" "C:\Program Files (x86)\iNode\iNode Client\iNode Client.exe"
-    echo 记得插好线缆再连接
+    echo 记得插好线缆再连接iNode
+
     echo 将在30秒后自动退出
     timeout /t 30
     exit /b
